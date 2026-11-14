@@ -89,10 +89,12 @@ function mountGen(g){
   document.getElementById('main').innerHTML=appHTML();bindActions();
   const panel=document.getElementById('panel');
   const rp=()=>{panel.innerHTML=g.panel()};
-  const rf=()=>{document.getElementById('paper').innerHTML=g.build();
+  const rf=()=>{document.getElementById('paper').innerHTML=g.view?g.view():g.build();
     document.getElementById('warns').innerHTML=lastWarn.map(w=>`<div class="warn">${esc(w)}</div>`).join('')+(g.extra?g.extra():'');
     try{localStorage.setItem(g.key,JSON.stringify(g.st()))}catch(e){}};
-  rp();rf();
+  rp();rf();g.refresh=()=>{rp();rf()};
+  // view(): eigen weergave in het papier (bijv. een editor); paperClick(e): klikken op de figuur bewerkt hem
+  if(g.paperClick)document.getElementById('paper').addEventListener('click',e=>{if(g.paperClick(e)===false)return;rp();rf()});
   panel.addEventListener('input',e=>{const el=e.target;if(!el.dataset.k||el.tagName==='SELECT')return;let v=el.value;
     if('num' in el.dataset||'dec' in el.dataset){const n='dec' in el.dataset?parseFloat(String(v).replace(',','.')):parseInt(v);if(isNaN(n))return;v=Math.max(+el.min||0,Math.min(el.max===''?999:+el.max,n))}setPath(g.st(),el.dataset.k,v);if(g.onChange)g.onChange(el.dataset.k);rf()});
   panel.addEventListener('change',e=>{const el=e.target;if(el.tagName!=='SELECT'||!el.dataset.k)return;let v=el.value;if('num' in el.dataset)v=+v;

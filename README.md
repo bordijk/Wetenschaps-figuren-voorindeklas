@@ -17,6 +17,7 @@ Generatoren voor scheikundefiguren voor toetsen en werkbladen. Je stelt een figu
 | Energiediagram | `#energie` | `js/generatoren/energie.js` |
 | Opwarm-/afkoelcurve | `#opwarmcurve` | `js/generatoren/opwarmcurve.js` |
 | Reactievergelijkingen | `#reactie` | `js/generatoren/reactie.js` |
+| Structuurformule-editor | `#structuur` | `js/generatoren/structuur.js` |
 
 Elke generator heeft een eigen link: zet `#bohr` (enz.) achter het adres van de website.
 

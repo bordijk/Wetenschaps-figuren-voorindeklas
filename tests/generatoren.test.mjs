@@ -6,7 +6,7 @@ const app = laadApp();
 const figuren = {
   deeltjes: ['buildSVG', 'panelHTML'], metaal: ['buildMetalSVG', 'metalPanelHTML'], bohr: ['buildBohr', 'bohrPanel'],
   lewis: ['buildLewis', 'lewisPanel'], atoombinding: ['buildATB', 'atbPanel'], energie: ['buildED', 'edPanel'],
-  opwarmcurve: ['buildOC', 'ocPanel'], reactie: ['buildRX', 'rxPanel'],
+  opwarmcurve: ['buildOC', 'ocPanel'], reactie: ['buildRX', 'rxPanel'], structuur: ['buildST', 'stPanel'],
 };
 
 for (const [id, [build, panel]] of Object.entries(figuren)) {

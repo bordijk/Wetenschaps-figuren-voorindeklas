@@ -72,3 +72,5 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .soonbox{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:28px;text-align:center;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .brand a{color:var(--accent)}
+.st-prev{background:#fff;border:1px solid var(--paper-edge);border-radius:6px;padding:10px;display:flex;justify-content:center;overflow-x:auto}
+.st-prev svg{max-width:100%;height:auto}

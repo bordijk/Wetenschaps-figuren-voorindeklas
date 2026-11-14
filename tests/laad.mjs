@@ -20,8 +20,8 @@ export function laadApp() {
   };
   vm.createContext(sandbox);
   const code = scripts.map(s => fs.readFileSync(path.join(root, s), 'utf8')).join('\n;\n')
-    + '\n;globalThis.__app={GEN,RXFLAT,RXLIB,rxFromLib,rxFromText,balance,buildSVG,buildMetalSVG,buildBohr,buildLewis,buildATB,buildED,buildOC,buildRX,'
-    + 'panelHTML,metalPanelHTML,bohrPanel,lewisPanel,atbPanel,edPanel,ocPanel,rxPanel,get rx(){return rx},get lastWarn(){return lastWarn}};';
+    + '\n;globalThis.__app={GEN,RXFLAT,RXLIB,rxFromLib,rxFromText,balance,buildSVG,buildMetalSVG,buildBohr,buildLewis,buildATB,buildED,buildOC,buildRX,buildST,stView,stFillH,stFormula,stFormulas,stLoad,stCheck,stClick,stAtXY,stTermH,'
+    + 'panelHTML,metalPanelHTML,bohrPanel,lewisPanel,atbPanel,edPanel,ocPanel,rxPanel,stPanel,get sst(){return sst},get rx(){return rx},get lastWarn(){return lastWarn}};';
   vm.runInContext(code, sandbox, { filename: 'app.js' });
   return sandbox.__app;
 }
