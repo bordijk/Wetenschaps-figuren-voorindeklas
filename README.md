@@ -2,7 +2,8 @@
 
 Generatoren voor scheikundefiguren voor toetsen en werkbladen. Je stelt een figuur in, klikt op **Kopieer als afbeelding** en plakt hem in Word of PowerPoint.
 
-**Website:** https://bordijk.github.io/wetenschaps-figuren-voorindeklas/
+**Website:** https://bordijk.github.io/Wetenschaps-figuren-voorindeklas/
+https://bordijk.github.io/Wetenschaps-figuren-voorindeklas/
 
 ## Generatoren
 
