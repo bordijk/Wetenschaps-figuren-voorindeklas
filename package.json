@@ -1,0 +1,10 @@
+{
+  "name": "wetenschaps-figuren-voorindeklas",
+  "private": true,
+  "description": "Generatoren voor scheikundefiguren voor toetsen en werkbladen",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "start": "npx --yes serve ."
+  }
+}

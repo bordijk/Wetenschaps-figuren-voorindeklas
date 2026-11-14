@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stroom door metaal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: bioscoopscherm — canvas 16:9 bovenaan met ondertitel eronder, bediening daaronder. Bewust één donkere look voor de beamer. */
+:root{
+  --bg:#0d1117; --stage:#121821; --panel:#18202b; --ink:#e8edf4; --muted:#93a0b4; --line:#2a3443;
+  --copper:#e08a4f; --electron:#5fd4ff; --accent:#5fd4ff; --accent-ink:#06202b; --current:#ff6b5e;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 36px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1{font:700 26px/1.1 var(--f-display);margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:2px 0 0;font-size:14px}
+.screen{background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;max-width:100%}
+.caption{min-height:4.2em;padding:14px 20px;border-top:1px solid var(--line);font-size:clamp(16px,2.1vw,21px);line-height:1.4;display:flex;gap:14px;align-items:flex-start}
+.caption .num{font:700 14px/1 var(--f-display);color:var(--accent-ink);background:var(--accent);border-radius:999px;padding:6px 9px;flex:none;margin-top:3px}
+.caption .num[hidden]{display:none}
+.bar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.btn{font:600 14px/1 var(--f-body);padding:10px 14px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dots{display:flex;gap:6px}
+.dots button{width:12px;height:12px;border-radius:50%;border:1px solid var(--muted);background:transparent;padding:0;cursor:pointer}
+.dots button[aria-current="true"]{background:var(--accent);border-color:var(--accent)}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.ctl{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ctl>span{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{flex:1;font:500 13px/1 var(--f-body);padding:9px 6px;border:0;border-left:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+input[type=range]{width:100%;accent-color:var(--copper)}
+.rangelabels{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.note{font-size:13px;color:var(--muted);margin:0}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <div><h1>Stroom door metaal</h1><p class="sub">Hoe vrije elektronen in een metaal elektrische stroom geleiden. Speel het af als filmpje of bedien de kring zelf.</p></div>
+  <div class="screen">
+    <canvas id="cv" width="1280" height="720" aria-label="Animatie van een stroomkring met een uitvergroot stuk metaaldraad"></canvas>
+    <div class="caption" aria-live="polite"><span class="num" id="snum" hidden></span><span id="cap">Druk op "Speel filmpje af" of gebruik de knoppen hieronder.</span></div>
+  </div>
+  <div class="bar">
+    <button class="btn primary" id="play">▶ Speel filmpje af</button>
+    <button class="btn" id="prev" aria-label="Vorige scène">◀ Vorige</button>
+    <button class="btn" id="next" aria-label="Volgende scène">Volgende ▶</button>
+    <div class="dots" id="dots"></div>
+    <button class="btn" id="pause" style="margin-left:auto">Pauze</button>
+    <button class="btn" id="fs">Volledig scherm</button>
+  </div>
+  <div class="controls">
+    <div class="ctl"><span>Schakelaar</span><div class="seg" id="sw"><button data-v="0">Open</button><button data-v="1">Dicht</button></div></div>
+    <div class="ctl"><span>Temperatuur van de draad</span><input type="range" id="temp" min="0" max="1" step="0.01" value="0.25"><div class="rangelabels"><span>koud</span><span>heet</span></div></div>
+    <div class="ctl"><span>Volg één elektron</span><div class="seg" id="follow"><button data-v="0">Uit</button><button data-v="1">Aan</button></div></div>
+    <div class="ctl"><span>Pijlen stroomrichting</span><div class="seg" id="arrows"><button data-v="0">Uit</button><button data-v="1">Aan</button></div></div>
+    <div class="ctl"><span>Snelheid</span><div class="seg" id="speed"><button data-v="0.5">½×</button><button data-v="1">1×</button></div></div>
+  </div>
+  <p class="note">Het uitvergrote stuk is een stukje van de onderste draad. Elektronen bewegen van de min-pool naar de plus-pool. De afgesproken stroomrichting loopt andersom, van plus naar min.</p>
+</div>
+
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const VW=1280,VH=720;
+function fit(){const d=Math.min(2,window.devicePixelRatio||1);cv.width=VW*d;cv.height=VH*d;ctx.setTransform(d,0,0,d,0,0)}
+fit();window.addEventListener('resize',fit);
+const C={copper:'#e08a4f',copperDark:'#9c5326',electron:'#5fd4ff',ink:'#e8edf4',muted:'#93a0b4',line:'#3a4658',metal:'#1d2430',wire:'#c9d2de',current:'#ff6b5e',follow:'#ffd84a'};
+const FONT='"IBM Plex Sans","Segoe UI",system-ui,sans-serif';
+
+/* ---------- Toestand ---------- */
+const S={on:false,temp:.25,follow:false,arrows:false,speed:1,paused:false};
+const rm=window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(rm)S.paused=true;
+
+/* ---------- Zoomvenster: rooster + elektronen ---------- */
+const Z={x:60,y:258,w:1160,h:398};
+const COLS=15,ROWS=5,RI=19,RE=5.5;
+const ions=[];
+for(let i=0;i<ROWS;i++)for(let j=0;j<COLS;j++)ions.push({bx:Z.x+Z.w*(j+.5)/COLS,by:Z.y+Z.h*(i+.5)/ROWS,ph:Math.random()*6.3,ph2:Math.random()*6.3,f:5+Math.random()*3,x:0,y:0});
+const els=[];const VT=150;
+function rndVel(){const a=Math.random()*Math.PI*2,s=VT*(.6+Math.random()*.8);return[Math.cos(a)*s,Math.sin(a)*s]}
+while(els.length<75){const x=Z.x+RE+Math.random()*(Z.w-2*RE),y=Z.y+RE+Math.random()*(Z.h-2*RE);
+  if(ions.every(p=>Math.hypot(p.bx-x,p.by-y)>RI+RE+3)){const[vx,vy]=rndVel();els.push({x,y,vx,vy})}}
+const tracked=els[Math.floor(els.length/2)];let trail=[];
+
+let flowCount=0,current=0,t=0,circuitS=0;
+function step(dt){
+  t+=dt;
+  const amp=1.5+S.temp*9;
+  ions.forEach(p=>{p.x=p.bx+amp*Math.sin(t*p.f+p.ph);p.y=p.by+amp*Math.cos(t*p.f*1.13+p.ph2)});
+  const accel=S.on?300:0;const scatter=2.2+S.temp*9;
+  for(const e of els){
+    e.vx+=accel*dt;
+    if(Math.random()<scatter*dt){const[vx,vy]=rndVel();e.vx=vx;e.vy=vy}
+    e.x+=e.vx*dt;e.y+=e.vy*dt;
+    if(e.y<Z.y+RE){e.y=Z.y+RE;e.vy=Math.abs(e.vy)}
+    if(e.y>Z.y+Z.h-RE){e.y=Z.y+Z.h-RE;e.vy=-Math.abs(e.vy)}
+    if(e.x>Z.x+Z.w){e.x-=Z.w;flowCount++;if(e===tracked)trail=[]}
+    if(e.x<Z.x){e.x+=Z.w;flowCount--;if(e===tracked)trail=[]}
+    for(const p of ions){const dx=e.x-p.x,dy=e.y-p.y,d=Math.hypot(dx,dy),m=RI+RE;
+      if(d<m&&d>0){const nx=dx/d,ny=dy/d;e.x=p.x+nx*m;e.y=p.y+ny*m;const vn=e.vx*nx+e.vy*ny;if(vn<0){e.vx-=2*vn*nx;e.vy-=2*vn*ny}}}
+  }
+  if(S.follow){trail.push([tracked.x,tracked.y]);if(trail.length>90)trail.shift()}else trail=[];
+  // stroom: verschoven gemiddelde van doorgangen per seconde
+  const inst=flowCount/dt;flowCount=0;const k=Math.min(1,dt/3);current+=(inst-current)*k;
+  circuitS+=Math.max(0,current)*dt*22;
+}
+
+/* ---------- Tekenen ---------- */
+const L=250,R=1030,T=62,B=200;const PER=2*(R-L)+2*(B-T);
+function loopPos(s){s=((s%PER)+PER)%PER;
+  if(s<R-L)return[L+s,B];s-=R-L;
+  if(s<B-T)return[R,B-s];s-=B-T;
+  if(s<R-L)return[R-s,T];s-=R-L;return[L,T+s]}
+function text(str,x,y,size,color,align='left',weight=500){ctx.font=`${weight} ${size}px ${FONT}`;ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline='middle';ctx.fillText(str,x,y)}
+function arrow(x1,y1,x2,y2,color,w=3){ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  const a=Math.atan2(y2-y1,x2-x1);ctx.beginPath();ctx.moveTo(x2+Math.cos(a)*8,y2+Math.sin(a)*8);ctx.lineTo(x2+Math.cos(a+2.5)*11,y2+Math.sin(a+2.5)*11);ctx.lineTo(x2+Math.cos(a-2.5)*11,y2+Math.sin(a-2.5)*11);ctx.closePath();ctx.fill()}
+function ion(x,y,r){const g=ctx.createRadialGradient(x-r*.35,y-r*.35,r*.2,x,y,r);g.addColorStop(0,'#f6b98a');g.addColorStop(1,C.copper);
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.strokeStyle=C.copperDark;ctx.lineWidth=1.5;ctx.stroke();
+  ctx.strokeStyle='#3a1c08';ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(x-r*.42,y);ctx.lineTo(x+r*.42,y);ctx.moveTo(x,y-r*.42);ctx.lineTo(x,y+r*.42);ctx.stroke()}
+function electron(x,y,r,col=C.electron){ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=8;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.shadowBlur=0}
+
+function draw(){
+  ctx.fillStyle='#121821';ctx.fillRect(0,0,VW,VH);
+  const lamp=Math.max(0,Math.min(1,current/2.5));
+  // kring
+  ctx.strokeStyle=C.wire;ctx.lineWidth=4;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(L,B);ctx.lineTo(R,B);ctx.lineTo(R,T);ctx.lineTo(905,T);ctx.moveTo(855,T);ctx.lineTo(652,T);ctx.moveTo(628,T);ctx.lineTo(L,T);ctx.lineTo(L,112);ctx.moveTo(L,150);ctx.lineTo(L,B);ctx.stroke();
+  // stroombron: lange dunne plaat = +, korte dikke = −
+  ctx.strokeStyle=C.ink;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(652,T-26);ctx.lineTo(652,T+26);ctx.stroke();
+  ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(628,T-13);ctx.lineTo(628,T+13);ctx.stroke();
+  text('−',612,T-30,22,C.ink,'center',700);text('+',668,T-32,22,C.ink,'center',700);text('stroombron',640,T+42,14,C.muted,'center');
+  // schakelaar
+  ctx.fillStyle=C.wire;ctx.beginPath();ctx.arc(855,T,5,0,7);ctx.arc(905,T,5,0,7);ctx.fill();
+  ctx.strokeStyle=C.wire;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(855,T);
+  if(S.on)ctx.lineTo(905,T);else ctx.lineTo(855+46*Math.cos(-.55),T+46*Math.sin(-.55));ctx.stroke();
+  text(S.on?'schakelaar dicht':'schakelaar open',880,T+28,14,C.muted,'center');
+  // lamp
+  if(lamp>.02){const g=ctx.createRadialGradient(L,131,4,L,131,70);g.addColorStop(0,`rgba(255,220,120,${.85*lamp})`);g.addColorStop(1,'rgba(255,220,120,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(L,131,70,0,7);ctx.fill()}
+  ctx.fillStyle=lamp>.02?`rgba(255,226,140,${.25+.75*lamp})`:'#121821';ctx.strokeStyle=C.ink;ctx.lineWidth=3;ctx.beginPath();ctx.arc(L,131,19,0,7);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(L-13,118);ctx.lineTo(L+13,144);ctx.moveTo(L+13,118);ctx.lineTo(L-13,144);ctx.stroke();
+  text('lampje',L-30,131,14,C.muted,'right');
+  // elektronen in de kring
+  for(let i=0;i<46;i++){const[x,y]=loopPos(circuitS+i*PER/46);
+    if(y===T&&x>620&&x<660)continue;if(y===T&&x>850&&x<910)continue;if(x===L&&y>108&&y<154)continue;
+    electron(x,y,3.2)}
+  // pijlen
+  if(S.arrows){
+    arrow(420,B+22,520,B+22,C.electron);text('elektronen: van − naar +',470,B+40,14,C.electron,'center',600);
+    arrow(800,T-30,720,T-30,C.electron,2.5);
+    arrow(520,T+22,420,T+22,C.current);text('stroomrichting (afspraak): van + naar −',470,T+40,14,C.current,'center',600);
+  }
+  // uitvergroot stuk
+  const zx1=580,zx2=700;ctx.strokeStyle=C.electron;ctx.lineWidth=2;ctx.setLineDash([5,5]);ctx.strokeRect(zx1,B-9,zx2-zx1,18);
+  ctx.beginPath();ctx.moveTo(zx1,B+9);ctx.lineTo(Z.x,Z.y);ctx.moveTo(zx2,B+9);ctx.lineTo(Z.x+Z.w,Z.y);ctx.stroke();ctx.setLineDash([]);
+  // legenda
+  ion(70,90,14);text('metaalion (+)',94,90,15,C.ink);
+  electron(70,128,5.5);text('vrij elektron (−)',94,128,15,C.ink);
+  // stroommeter
+  const mx=1075,my=70;ctx.strokeStyle=C.line;ctx.lineWidth=1.5;ctx.strokeRect(mx,my,170,120);
+  text('stroomsterkte',mx+85,my+20,14,C.muted,'center',600);
+  const frac=Math.max(0,Math.min(1,current/3));ctx.fillStyle='#232c39';ctx.fillRect(mx+20,my+44,130,16);ctx.fillStyle=C.electron;ctx.fillRect(mx+20,my+44,130*frac,16);
+  text(current<.4?'geen stroom':current<1.6?'kleine stroom':'grote stroom',mx+85,my+86,18,C.ink,'center',600);
+  // zoomvenster
+  ctx.save();ctx.beginPath();ctx.rect(Z.x,Z.y,Z.w,Z.h);ctx.clip();
+  ctx.fillStyle=C.metal;ctx.fillRect(Z.x,Z.y,Z.w,Z.h);
+  ions.forEach(p=>ion(p.x,p.y,RI));
+  if(trail.length>1){ctx.strokeStyle='rgba(255,216,74,.55)';ctx.lineWidth=2.5;ctx.beginPath();trail.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke()}
+  els.forEach(e=>{if(!(S.follow&&e===tracked))electron(e.x,e.y,RE)});
+  if(S.follow){electron(tracked.x,tracked.y,RE+2,C.follow)}
+  ctx.restore();
+  ctx.strokeStyle=C.electron;ctx.lineWidth=2;ctx.strokeRect(Z.x,Z.y,Z.w,Z.h);
+  if(S.on){text('← kant van de min-pool',Z.x+12,Z.y+Z.h+22,15,C.muted,'left',600);text('kant van de plus-pool →',Z.x+Z.w-12,Z.y+Z.h+22,15,C.muted,'right',600)}
+  text('uitvergroot stukje metaaldraad',Z.x+Z.w/2,Z.y+Z.h+22,15,C.ink,'center',600);
+  if(S.temp>.55){text('heet: ionen trillen sterk',Z.x+Z.w-12,Z.y-14,14,C.copper,'right',600)}
+}
+
+/* ---------- Filmpje: scènes ---------- */
+const SCENES=[
+ {d:9,s:{on:false,temp:.25,follow:false,arrows:false},c:'In een metaal zitten positieve metaalionen in een rooster. De valentie-elektronen zitten niet vast: ze bewegen vrij en kriskras tussen de ionen door.'},
+ {d:8,s:{on:false,temp:.25,follow:true,arrows:false},c:'Volg één elektron (geel). Het beweegt alle kanten op. Netto gaat er geen lading naar links of rechts, dus er loopt geen stroom en het lampje blijft uit.'},
+ {d:8,s:{on:true,temp:.25,follow:false,arrows:false},c:'We sluiten de schakelaar. De min-pool duwt de elektronen weg en de plus-pool trekt ze aan.'},
+ {d:10,s:{on:true,temp:.25,follow:true,arrows:false},c:'De elektronen bewegen nog steeds kriskras, maar schuiven netto op naar de plus-pool. Die beweging van geladen deeltjes is elektrische stroom. Het lampje gaat branden.'},
+ {d:9,s:{on:true,temp:.25,follow:false,arrows:true},c:'Aan de ene kant verlaten elektronen het stukje draad, aan de andere kant komen er nieuwe bij. Daarom moet de kring gesloten zijn. Let op: de afgesproken stroomrichting is van + naar −.'},
+ {d:10,s:{on:true,temp:.85,follow:false,arrows:false},c:'Bij een hogere temperatuur trillen de ionen harder. De elektronen botsen vaker, dus de stroom wordt kleiner: de weerstand van het metaal neemt toe.'},
+ {d:8,s:{on:false,temp:.25,follow:false,arrows:false},c:'Schakelaar open: de elektronen bewegen weer alleen kriskras. Er loopt geen stroom meer en het lampje gaat uit.'},
+];
+let story={on:false,i:0,t:0};
+const $=id=>document.getElementById(id);
+const dotsEl=$('dots');dotsEl.innerHTML=SCENES.map((_,i)=>`<button aria-label="Scène ${i+1}" data-i="${i}"></button>`).join('');
+function setScene(i){story.i=Math.max(0,Math.min(SCENES.length-1,i));story.t=0;Object.assign(S,SCENES[story.i].s);trail=[];
+  $('cap').textContent=SCENES[story.i].c;$('snum').hidden=false;$('snum').textContent=`${story.i+1}/${SCENES.length}`;syncUI()}
+function startStory(){story.on=true;S.paused=false;setScene(0)}
+function stopStory(){story.on=false;syncUI()}
+$('play').onclick=()=>story.on?stopStory():startStory();
+$('prev').onclick=()=>{story.on=true;S.paused=false;setScene(story.i-1)};
+$('next').onclick=()=>{story.on=true;S.paused=false;setScene(story.i+1)};
+dotsEl.onclick=e=>{const b=e.target.closest('button');if(!b)return;story.on=true;S.paused=false;setScene(+b.dataset.i)};
+$('pause').onclick=()=>{S.paused=!S.paused;syncUI()};
+$('fs').onclick=()=>{const el=document.querySelector('.screen');try{(el.requestFullscreen?el.requestFullscreen():Promise.reject()).catch(()=>{})}catch(e){}};
+
+/* ---------- Bediening ---------- */
+function segBind(id,key,num=true){$(id).onclick=e=>{const b=e.target.closest('button');if(!b)return;const v=+b.dataset.v;S[key]=key==='speed'?v:!!v;if(story.on&&key!=='speed')stopStory();if(key==='follow')trail=[];syncUI()}}
+segBind('sw','on');segBind('follow','follow');segBind('arrows','arrows');segBind('speed','speed');
+$('temp').oninput=e=>{S.temp=+e.target.value;if(story.on)stopStory()};
+function syncUI(){
+  const pr=(id,val)=>$(id).querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===val)));
+  pr('sw',S.on?1:0);pr('follow',S.follow?1:0);pr('arrows',S.arrows?1:0);pr('speed',S.speed);
+  $('temp').value=S.temp;
+  $('play').textContent=story.on?'■ Stop filmpje':'▶ Speel filmpje af';
+  $('pause').textContent=S.paused?'Doorgaan':'Pauze';
+  dotsEl.querySelectorAll('button').forEach((b,i)=>b.setAttribute('aria-current',String(story.on&&i===story.i)));
+  if(!story.on&&$('snum').hidden===false){$('snum').hidden=true;$('cap').textContent='Vrij verkennen: zet de schakelaar om, verander de temperatuur of volg één elektron.'}
+}
+syncUI();
+
+/* ---------- Lus ---------- */
+let last=performance.now();
+function loop(now){
+  let dt=Math.min(.05,(now-last)/1000);last=now;
+  if(!S.paused){const sdt=dt*S.speed;const n=3;for(let i=0;i<n;i++)step(sdt/n);
+    if(story.on){story.t+=dt;if(story.t>SCENES[story.i].d){if(story.i<SCENES.length-1)setScene(story.i+1);else stopStory()}}}
+  draw();requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
