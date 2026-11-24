@@ -74,3 +74,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .brand a{color:var(--accent)}
 .st-prev{background:#fff;border:1px solid var(--paper-edge);border-radius:6px;padding:10px;display:flex;justify-content:center;overflow-x:auto}
 .st-prev svg{max-width:100%;height:auto}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.bo-tab{border-collapse:collapse;font-size:13px;width:100%}
+.bo-tab th,.bo-tab td{border:1px solid var(--line);padding:5px 7px;text-align:left;white-space:nowrap}
+.bo-tab th{font-weight:600;background:var(--bg)}

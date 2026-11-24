@@ -18,6 +18,7 @@ Generatoren voor scheikundefiguren voor toetsen en werkbladen. Je stelt een figu
 | Opwarm-/afkoelcurve | `#opwarmcurve` | `js/generatoren/opwarmcurve.js` |
 | Reactievergelijkingen | `#reactie` | `js/generatoren/reactie.js` |
 | Structuurformule-editor | `#structuur` | `js/generatoren/structuur.js` |
+| Botsende-deeltjesmodel (simulatie) | `#botsing` | `js/generatoren/botsing.js` |
 
 Elke generator heeft een eigen link: zet `#bohr` (enz.) achter het adres van de website.
 

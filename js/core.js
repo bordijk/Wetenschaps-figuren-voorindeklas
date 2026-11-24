@@ -6,7 +6,7 @@ const GENS=[
  ['Aflezen',[['volume','Volume aflezen'],['onderdompeling','Onderdompelmethode'],['gasspuit','Gasspuit'],['lengte','Lengte'],['massa','Massa'],['temperatuur','Temperatuur'],['ph','pH']]],
  ['Grafieken',[['titratie','Titratiecurve'],['opwarmcurve','Opwarm-/afkoelcurve'],['energie','Energiediagram'],['halveringstijd','Halveringstijd'],['lijnspectrum','Lijnspectrum'],['massaspectrum','Massaspectrum'],['pes','Foto-elektronspectrum']]],
  ['Atoombouw en binding',[['deeltjes','Deeltjesmodel'],['metaal','Metaalrooster'],['bohr','Bohr-model'],['nuclide','Nuclidenotatie'],['lewis','Lewisstructuur'],['atoombinding','Atoombinding'],['orbitaal','Orbitaaldiagram']]],
- ['Reacties',[['reactie','Reactievergelijkingen']]],
+ ['Reacties',[['reactie','Reactievergelijkingen'],['botsing','Botsende-deeltjesmodel']]],
  ['Structuurformules',[['structuur','Structuurformule-editor']]]
 ];
 
