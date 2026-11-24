@@ -49,3 +49,20 @@ test('vaste stof: altijd 36 deeltjes, en wat reageert verdwijnt', () => {
   }
   Object.assign(app.bo, { div: '1', t: 20, c: 3 });
 });
+
+test('grafiek: geschiedenis klopt met de deeltjes en wordt getekend', () => {
+  Object.assign(app.bo, { t: 80, c: 3, div: '36', graph: 'on' });
+  app.boReset(7);
+  for (let i = 0; i < 1500; i++) app.boStep(0.01);
+  const h = app.boS.hist, last = h[h.length - 1];
+  assert.ok(h.length > 50);
+  assert.equal(h[0].S, 36);
+  assert.equal(h[0].A, 24);
+  assert.equal(last.A + last.P, 24, 'opgelost + product blijft gelijk');
+  assert.equal(36 - last.S, last.P, 'elk gereageerd deeltje geeft een product');
+  const svg = app.buildBO();
+  assert.match(svg, /<polyline/);
+  assert.match(svg, /tijd \(s\)/);
+  assert.ok(!/NaN|undefined/.test(svg));
+  Object.assign(app.bo, { t: 20, div: '1', graph: 'off' });
+});
