@@ -2,21 +2,23 @@
 // Simulatie: opgeloste deeltjes bewegen door een vat en botsen tegen een vaste stof. Een botsing is effectief als het
 // deeltje genoeg energie heeft (v² boven de drempel = activeringsenergie); dan reageert het deeltje van de vaste stof
 // en wordt het opgeloste deeltje een reactieproduct. build() tekent het huidige moment, dus elk moment is als figuur te kopiëren.
-const BO_W=460,BO_H=280,BO_RA=6,BO_RS=8,BO_RP=5,BO_NS=36;   // vat, stralen (opgelost, vaste stof, product), deeltjes vaste stof
-const BO_VA2=14300;   // drempel voor v²: bij 20 °C is ongeveer 1 op de 10 botsingen effectief
-const BO0={t:20,c:3,div:'1',cat:'off',slow:'1',flash:'on',arrows:'off',count:'on',legend:'on',color:'bw',graph:'off',recLen:'10',
+const BO_W=560,BO_H=340,BO_RA=4.5,BO_RS=5.5,BO_RP=3.5,BO_N=12,BO_NS=BO_N*BO_N;   // vaste stof: 12 × 12 = 144 deeltjes   // vat, stralen (opgelost, vaste stof, product), deeltjes vaste stof
+const BO_VA2=24900;   // drempel voor v²: bij 20 °C is ongeveer 1 op de 10 botsingen effectief
+const BO0={t:20,n:80,div:'1',cat:'off',slow:'1',flash:'on',arrows:'off',count:'on',legend:'on',color:'bw',graph:'off',recLen:'10',
   labA:'opgelost deeltje',labS:'deeltje van de vaste stof',labP:'reactieproduct',title:'',caption:''};
 let bo;try{bo=JSON.parse(localStorage.getItem('sf.botsing')||'null')}catch(e){}bo=Object.assign(clone(BO0),bo||{});
 let boS=null,boLog=[],boRAF=0,boLast=0,boRec=null;
 let boRun=!(typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches);
 
 // Snelheden volgen een (2D) Maxwell-verdeling; de breedte groeit met de temperatuur (uitvergroot, zodat het effect goed te zien is)
-const boSigma=()=>7.2*Math.sqrt(+bo.t+40);
+const boSigma=()=>9.5*Math.sqrt(+bo.t+40);
 const boVa2=()=>bo.cat==='on'?BO_VA2*.5:BO_VA2;
-const boNA=()=>8*+bo.c;
+const boNA=()=>+bo.n;
+const BO_DIV={1:'1 blok',4:'4 stukjes',9:'9 stukjes',16:'16 stukjes',36:'36 stukjes',144:'poeder'};
+if(!BO_DIV[bo.div])bo.div='1';
 function boKick(p,r){const v=boSigma()*Math.sqrt(-2*Math.log(1-r())),a=r()*2*Math.PI;p.vx=v*Math.cos(a);p.vy=v*Math.sin(a)}
-// Vaste stof: 36 deeltjes als 1 blok van 6×6, 4 blokjes van 3×3, 9 blokjes van 2×2 of 36 losse deeltjes (poeder)
-function boSolid(){const g=Math.round(Math.sqrt(+bo.div)),k=6/g,out=[];
+// Vaste stof: altijd 144 deeltjes, als 1 blok van 12×12, of 4, 9, 16 of 36 blokjes, of 144 losse deeltjes (poeder)
+function boSolid(){const g=Math.round(Math.sqrt(+bo.div)),k=BO_N/g,out=[];
   for(let i=0;i<g;i++)for(let j=0;j<g;j++){const cx=(i+.5)*BO_W/g,cy=(j+.5)*BO_H/g;
     for(let a=0;a<k;a++)for(let b=0;b<k;b++)out.push({x:cx+(a-(k-1)/2)*2*BO_RS,y:cy+(b-(k-1)/2)*2*BO_RS,on:true})}
   return out}
@@ -25,20 +27,24 @@ function boFree(r){for(let i=0;i<300;i++){const x=BO_RA+r()*(BO_W-2*BO_RA),y=BO_
 function boAddA(){const p=Object.assign(boFree(boS.r),{k:'A'});boKick(p,boS.r);boS.m.push(p)}
 function boReset(seed){
   boS={r:rng(seed||Math.floor(Math.random()*1e9)),solid:boSolid(),m:[],time:0,hits:0,eff:0,effT:[],hitT:[],flash:[],half:null,sig:boSigma(),hist:[],next:0,dtH:.25};
-  for(let i=0;i<boNA();i++)boAddA();boSample()}
+  boS.grid=boGrid(boS.solid);for(let i=0;i<boNA();i++)boAddA();boSample()}
 // Aantal deeltjes van elke stof op dit moment, voor de grafiek (elke 0,25 s modeltijd; bij een lange meting minder vaak)
 function boSample(){const S=boS,a=S.m.filter(p=>p.k==='A').length;S.hist.push({t:S.time,A:a,S:boLeft(),P:S.m.length-a});S.next=S.time+S.dtH;
   if(S.hist.length>800){S.hist=S.hist.filter((h,i)=>i%2===0||i===S.hist.length-1);S.dtH*=2}}
 const boLeft=()=>boS.solid.filter(s=>s.on).length;
+const BO_CELL=20,boKey=(i,j)=>i*1000+j;
+function boGrid(sol){const g=new Map();sol.forEach(s=>{const k=boKey(Math.floor(s.x/BO_CELL),Math.floor(s.y/BO_CELL));if(!g.has(k))g.set(k,[]);g.get(k).push(s)});return g}
+function boNear(x,y){const i=Math.floor(x/BO_CELL),j=Math.floor(y/BO_CELL),out=[];
+  for(let a=i-1;a<=i+1;a++)for(let b=j-1;b<=j+1;b++){const c=boS.grid.get(boKey(a,b));if(c)for(const s of c)if(s.on)out.push(s)}return out}
 
 function boStep(dt){const S=boS,r=S.r,va2=boVa2();S.time+=dt;
   S.flash.forEach(f=>f.life-=dt);S.flash=S.flash.filter(f=>f.life>0);
   for(const p of S.m){const rad=p.k==='A'?BO_RA:BO_RP;p.x+=p.vx*dt;p.y+=p.vy*dt;
     const wall=p.x<rad||p.x>BO_W-rad||p.y<rad||p.y>BO_H-rad;
-    if(wall&&r()<.3)boKick(p,r);   // botsing met de wand of met watermoleculen: nieuwe snelheid volgens de temperatuur
+    if((wall&&r()<.3)||r()<dt*2)boKick(p,r);   // botsing met de wand of met watermoleculen: nieuwe snelheid volgens de temperatuur
     if(p.x<rad){p.x=rad;p.vx=Math.abs(p.vx)}if(p.x>BO_W-rad){p.x=BO_W-rad;p.vx=-Math.abs(p.vx)}
     if(p.y<rad){p.y=rad;p.vy=Math.abs(p.vy)}if(p.y>BO_H-rad){p.y=BO_H-rad;p.vy=-Math.abs(p.vy)}
-    for(const s of S.solid){if(!s.on)continue;const dx=p.x-s.x,dy=p.y-s.y,d=Math.hypot(dx,dy),R=rad+BO_RS;if(d>=R||d===0)continue;
+    for(const s of boNear(p.x,p.y)){const dx=p.x-s.x,dy=p.y-s.y,d=Math.hypot(dx,dy),R=rad+BO_RS;if(d>=R||d===0)continue;
       const nx=dx/d,ny=dy/d,vn=p.vx*nx+p.vy*ny;p.x=s.x+nx*R;p.y=s.y+ny*R;if(vn>=0)continue;
       if(p.k==='A'){S.hits++;S.hitT.push(S.time);
         if(p.vx*p.vx+p.vy*p.vy>=va2){   // effectieve botsing: genoeg energie
@@ -114,7 +120,7 @@ function buildBO(){if(!boS)boReset(1);lastWarn=[];
   boS.m.forEach(p=>{g+=p.k==='A'?`<circle cx="${r1(p.x)}" cy="${r1(p.y)}" r="${BO_RA}" ${C.A} stroke-width="1"/>`:`<circle cx="${r1(p.x)}" cy="${r1(p.y)}" r="${BO_RP}" ${C.P} stroke-width="1.4"/>`;
     if(bo.arrows==='on')g+=boArrow(p.x,p.y,p.vx,p.vy)});
   if(bo.flash==='on')boS.flash.forEach(f=>{
-    if(f.eff){let d='';for(let i=0;i<8;i++){const a=i*Math.PI/4;d+=`M${r1(f.x+4*Math.cos(a))} ${r1(f.y+4*Math.sin(a))}L${r1(f.x+13*Math.cos(a))} ${r1(f.y+13*Math.sin(a))}`}
+    if(f.eff){let d='';for(let i=0;i<8;i++){const a=i*Math.PI/4;d+=`M${r1(f.x+3*Math.cos(a))} ${r1(f.y+3*Math.sin(a))}L${r1(f.x+10*Math.cos(a))} ${r1(f.y+10*Math.sin(a))}`}
       g+=`<path d="${d}" stroke="${C.hit}" stroke-width="2.2" stroke-linecap="round" fill="none"/>`}
     else g+=`<circle cx="${r1(f.x)}" cy="${r1(f.y)}" r="5" fill="none" stroke="#666" stroke-width="1.2" stroke-dasharray="2 2"/>`});
   body+=`<svg x="${M}" y="${top}" width="${BO_W}" height="${BO_H}" viewBox="0 0 ${BO_W} ${BO_H}" overflow="hidden">${g}</svg>`;
@@ -139,8 +145,8 @@ function boSetText(id,t){const el=document.getElementById(id);if(el)el.textConte
 function boPanel(){
   return `<div class="sec"><h3>Instellen</h3>
     <div class="row"><label for="boT">Temperatuur: <span id="boTv">${bo.t} °C</span></label><input type="range" id="boT" min="0" max="100" step="5" data-k="t" data-num value="${bo.t}"></div>
-    <div class="row"><label for="boC">Concentratie: <span id="boCv">${boNA()} opgeloste deeltjes</span></label><input type="range" id="boC" min="1" max="5" step="1" data-k="c" data-num value="${bo.c}"></div>
-    <div class="row"><span class="lab">Verdelingsgraad van de vaste stof</span>${seg('div',[['1','1 blok'],['4','4 stukjes'],['9','9 stukjes'],['36','Poeder']],bo.div)}</div>
+    <div class="row"><label for="boC">Concentratie: <span id="boCv">${boNA()} opgeloste deeltjes</span></label><input type="range" id="boC" min="10" max="200" step="10" data-k="n" data-num value="${bo.n}"></div>
+    <div class="row"><span class="lab">Verdelingsgraad: aantal stukjes vaste stof (144 deeltjes)</span>${seg('div',[['1','1'],['4','4'],['9','9'],['16','16'],['36','36'],['144','Poeder']],bo.div)}</div>
     <div class="row"><span class="lab">Katalysator</span>${seg('cat',[['off','Zonder'],['on','Met']],bo.cat)}</div>
     <p class="hint" style="margin:0">Een botsing is effectief als het deeltje genoeg energie heeft (meer dan de activeringsenergie). Bij een hogere temperatuur bewegen de deeltjes sneller: er zijn meer botsingen én een groter deel ervan is effectief. Een fijnere verdeling geeft meer deeltjes aan het oppervlak. Een katalysator verlaagt de activeringsenergie. De snelheden zijn uitvergroot, zodat het verschil goed te zien is.</p></div>
   <div class="sec"><h3>Simulatie</h3>
@@ -165,16 +171,16 @@ function boPanel(){
     <div class="row"><label for="boCap">Onderschrift (bijv. A, B, C of D)</label><input type="text" id="boCap" data-k="caption" value="${esc(bo.caption)}"></div></div>`;
 }
 const BOTS={key:'sf.botsing',st:()=>bo,build:buildBO,view:()=>{if(!boS)boReset();boPlay();return buildBO()},panel:boPanel,
-  onChange:k=>{bo.t=+bo.t;bo.c=+bo.c;if(!boS)boReset();
+  onChange:k=>{bo.t=+bo.t;bo.n=+bo.n;if(!boS)boReset();
     if(k==='t'){const f=boSigma()/boS.sig;boS.m.forEach(p=>{p.vx*=f;p.vy*=f});boS.sig=boSigma();boSetText('boTv',bo.t+' °C')}
-    if(k==='c'){const A=boS.m.filter(p=>p.k==='A');for(let i=A.length;i<boNA();i++)boAddA();
+    if(k==='n'){const A=boS.m.filter(p=>p.k==='A');for(let i=A.length;i<boNA();i++)boAddA();
       for(let i=A.length;i>boNA();i--)boS.m.splice(boS.m.indexOf(A[i-1]),1);boSetText('boCv',boNA()+' opgeloste deeltjes')}
     if(k==='div')boReset()},
   act:a=>{
     if(a==='play'){boRun=!boRun;if(!boRun&&boRec)boRecStop();boPlay()}
     if(a==='rec'&&!boRec)boRecord(+bo.recLen);
     if(a==='reset')boReset();
-    if(a==='note')boLog.push({t:bo.t,n:boNA(),div:{1:'1 blok',4:'4 stukjes',9:'9 stukjes',36:'poeder'}[bo.div],cat:bo.cat==='on'?'met':'zonder',
+    if(a==='note')boLog.push({t:bo.t,n:boNA(),div:BO_DIV[bo.div],cat:bo.cat==='on'?'met':'zonder',
       time:boS.time,hit:boS.time?boS.hits/boS.time:0,eff:boS.time?boS.eff/boS.time:0,half:boS.half});
     if(a==='clearlog')boLog=[]},
   extra:()=>boLog.length?`<div class="kind"><strong style="font-size:13px">Metingen</strong><div style="overflow-x:auto"><table class="bo-tab">
