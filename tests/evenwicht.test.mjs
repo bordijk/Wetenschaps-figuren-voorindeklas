@@ -97,4 +97,14 @@ test('gevolgd deeltje blijft reageren; figuur met energiediagram en grafieken', 
   assert.equal((svg.match(/<polyline/g) || []).length, 5);
   assert.match(svg, /reactieverloop/);
   assert.match(svg, /Heengaande reactie: exotherm/);
+  assert.equal((svg.match(/stroke-dasharray="9 3 2 3"/g) || []).length, 3 + 1 + 2, 'evenwichtslijnen (3 stoffen + snelheid) + legenda');
+  assert.match(svg, /evenwicht: heen = terug/);
+  assert.match(svg, /→ heen: exotherm  ·  ← terug: endotherm/);
+  app.eq.exo = 'off';
+  assert.doesNotMatch(app.buildEQ(), /→ heen:/);
+  app.eq.exo = 'on';
+  // na een verstoring verdwijnen de lijnen tot er een nieuw evenwicht is
+  for (let i = 0; i < 20; i++) app.eqAdd('A');
+  app.eqS.eqOn = false; app.eqS.eqSince = null;
+  assert.doesNotMatch(app.buildEQ(), /evenwicht: heen = terug/);
 });

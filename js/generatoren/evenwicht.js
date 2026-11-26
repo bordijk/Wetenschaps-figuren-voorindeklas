@@ -18,7 +18,7 @@ const EQ_TYPES={
   dim:{knop:'2 A ⇌ B',sp:{A:'a',B:'aa'},f:[['A','A'],['B']],b:[['B'],['A','A']],lab:{A:'A',B:'B'}},
   exch:{knop:'A₂ + B₂ ⇌ 2 AB',sp:{A:'aa',B:'bb',C:'ab'},f:[['A','B'],['C','C']],b:[['C','C'],['A','B']],lab:{A:'A_2',B:'B_2',C:'AB'}}
 };
-const EQ0={type:'add',fE:3,bE:7,t:20,n:60,V:1,start:'l',cat:'off',slow:'1',smooth:'3',eqn:'on',ed:'on',g1:'on',g2:'on',track:'on',flash:'on',
+const EQ0={type:'add',fE:3,bE:7,t:20,n:60,V:1,start:'l',cat:'off',slow:'1',smooth:'3',eqn:'on',exo:'on',ed:'on',g1:'on',g2:'on',track:'on',flash:'on',
   count:'on',legend:'on',color:'bw',lab:{},title:'',caption:'',recLen:'10'};
 let eq;try{eq=JSON.parse(localStorage.getItem('sf.evenwicht')||'null')}catch(e){}eq=Object.assign(clone(EQ0),eq||{});
 if(!EQ_TYPES[eq.type])eq.type='add';if(eq.start!=='r')eq.start='l';
@@ -104,9 +104,13 @@ function eqStep(dt){const S=eqS,r=S.r,T=eqT(),th=eqTheta(),cat=eq.cat==='on'?EQ_
 function eqStatus(){const S=eqS,h=S.hist;if(S.time<8||h.length<3)return null;
   const rec=h.filter(x=>x.t>=S.time-6),f=rec.reduce((s,x)=>s+x.f,0)/rec.length,b=rec.reduce((s,x)=>s+x.b,0)/rec.length;
   const past=h.find(x=>x.t>=S.time-5)||h[0],tot=S.m.length,ruim=S.eqOn?3.5:1;
-  S.eqOn=Math.abs(f-b)<=ruim*(.12*(f+b)/2+.4)&&eqSp().every(k=>Math.abs(eqCount(k)-past[k])<=ruim*(.04*tot+2));
+  const was=S.eqOn;S.eqOn=Math.abs(f-b)<=ruim*(.12*(f+b)/2+.4)&&eqSp().every(k=>Math.abs(eqCount(k)-past[k])<=ruim*(.04*tot+2));
+  if(S.eqOn&&!was)S.eqSince=Math.max(0,S.time-5);if(!S.eqOn)S.eqSince=null;
   return S.eqOn}
-const eqDisturb=()=>{if(eqS)eqS.eqOn=false};
+// Evenwichtsniveaus: gemiddelden sinds het begin van het evenwicht (aantallen per stof, en de reactiesnelheid heen = terug)
+function eqLevels(){const S=eqS;if(!S||!S.eqOn||S.eqSince==null)return null;const rec=S.hist.filter(x=>x.t>=S.eqSince);if(rec.length<2)return null;
+  const avg=k=>rec.reduce((s,x)=>s+x[k],0)/rec.length,L={t:S.eqSince};eqSp().forEach(k=>L[k]=avg(k));L.r=(avg('f')+avg('b'))/2;return L}
+const eqDisturb=()=>{if(eqS){eqS.eqOn=false;eqS.eqSince=null}};
 // Volume veranderen: het vat groeit of krimpt, de deeltjes schuiven mee
 function eqResize(){const S=eqS,W=eqW(),H=eqH();S.m.forEach(p=>{p.x*=W/S.W;p.y*=H/S.H});S.W=W;S.H=H}
 
@@ -135,7 +139,7 @@ const eqStar=(x,y,c)=>{let d='';for(let i=0;i<6;i++){const a=i*Math.PI/3+.3;d+=`
 const eqRing=(x,y,c)=>`<circle cx="${r1(x)}" cy="${r1(y)}" r="10" fill="none" stroke="${c}" stroke-width="1.8" stroke-dasharray="3 2.5"/>`;
 const eqTrRing=(x,y,c)=>`<circle cx="${r1(x)}" cy="${r1(y)}" r="9" fill="none" stroke="${c}" stroke-width="2.2"/>`;
 // Grafiek tegen de tijd; elk punt is het gemiddelde van de laatste 'smooth' metingen
-function eqPlot(y0,ylab,keys,floor,W){const ML=46,MR=30,MT=34,H=120,w=W-32-ML-MR,C=eqStyle(),k0=Math.max(1,+eq.smooth);
+function eqPlot(y0,ylab,keys,floor,W,refs=[]){const ML=46,MR=30,MT=34,H=120,w=W-32-ML-MR,C=eqStyle(),k0=Math.max(1,+eq.smooth);
   const raw=eqS.hist,hist=raw.map((h,i)=>{const o={t:h.t},from=Math.max(0,i-k0+1);keys.forEach(k=>{let s=0;for(let j=from;j<=i;j++)s+=raw[j][k];o[k]=s/(i-from+1)});return o});
   const tmax=Math.max(20,Math.ceil(eqS.time/10)*10),xs=niceStep(tmax,5);
   const top=Math.max(floor,...keys.flatMap(k=>hist.map(h=>h[k]))),ys=niceStep(top,4),ymax=Math.ceil(top/ys)*ys;
@@ -143,6 +147,9 @@ function eqPlot(y0,ylab,keys,floor,W){const ML=46,MR=30,MT=34,H=120,w=W-32-ML-MR
   for(let t=xs;t<=tmax+1e-9;t+=xs)s+=`<line x1="${r1(X(t))}" y1="${MT+H}" x2="${r1(X(t))}" y2="${MT+H+5}" stroke="#000" stroke-width="1.2"/>`+fmt(nlNum(t),X(t),MT+H+19,12,'middle');
   for(let v=0;v<=ymax+1e-9;v+=ys)s+=`<line x1="${ML-5}" y1="${r1(Y(v))}" x2="${ML}" y2="${r1(Y(v))}" stroke="#000" stroke-width="1.2"/>`+fmt(nlNum(v,1),ML-8,Y(v)+4,12,'end');
   s+=fmt(ylab,ML+12,MT-14,12)+fmt('tijd (s)',ML+w+22,MT+H+33,12,'end');
+  const used=[];refs.forEach(({v,t0,c,d})=>{const y=Y(v);   // elke lijn tekenen; het getal alleen als het niet over een ander getal valt
+    s+=`<line x1="${r1(X(t0))}" y1="${r1(y)}" x2="${r1(ML+w)}" y2="${r1(y)}" stroke="${c}" stroke-width="1.3" stroke-dasharray="9 3 2 3"/>`;
+    if(used.some(u=>Math.abs(u-y)<11))return;used.push(y);s+=fmt(nlNum(v,d),ML+w+4,y+4,11,'start',HALO)});
   keys.forEach(k=>{const[c,da]=C.line[k];
     s+=`<polyline points="${hist.map(h=>r1(X(h.t))+','+r1(Y(h[k]))).join(' ')}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"${da?` stroke-dasharray="${da}"`:''}/>`});
   return{s:`<g transform="translate(16,${y0})">${s}</g>`,h:MT+H+38}}
@@ -170,6 +177,8 @@ const eqLineIcon=k=>(x,y)=>{const[c,da]=eqStyle().line[k];return `<line x1="${x}
 function buildEQ(){if(!eqS)eqReset(1);lastWarn=[];
   const C=eqStyle(),M=16,BW=eqS.W,BH=eqS.H,W=Math.max(BW,500)+2*M,bx=(W-BW)/2,sp=eqSp(),dE=eqDE();let top=M,body='';
   if(eq.title){body+=fmt(eq.title,M,top+16,17,'start','font-weight="700"');top+=30}
+  if(eq.exo==='on'){const dE=eqDE();   // boven de reactievergelijking: welke kant exotherm is en welke endotherm
+    body+=fmt(dE===0?'heen en terug: zonder energie-effect (ΔE = 0)':`→ heen: ${eqKind(dE)}     ← terug: ${eqKind(-dE)}`.replace(/     /,'  ·  '),W/2,top+13,13,'middle','font-style="italic"');top+=20}
   if(eq.eqn==='on'){body+=fmt(eqEquation(),W/2,top+18,18,'middle');top+=32}
   let g='';
   eqS.m.forEach(p=>{const v=Math.hypot(p.vx,p.vy),P=eqParticle(p.x,p.y,p.k,v>1?p.vx/v:1,v>1?p.vy/v:0,C);g+=P.s;
@@ -178,7 +187,8 @@ function buildEQ(){if(!eqS)eqReset(1);lastWarn=[];
   body+=`<svg x="${r1(bx)}" y="${top}" width="${BW}" height="${BH}" viewBox="0 0 ${BW} ${BH}" overflow="hidden"><rect width="${BW}" height="${BH}" fill="#fff"/>${g}</svg>`;
   body+=`<rect x="${r1(bx)}" y="${top}" width="${BW}" height="${BH}" fill="none" stroke="#000" stroke-width="1.6"/>`;
   let y=top+BH;
-  if(eq.count==='on'){const st=eqStatus(),f=eqRate(eqS.fT),b=eqRate(eqS.bT);
+  const st=eqStatus(),EL=eqLevels(),refC=eq.color==='color'?'#555':'#000';
+  if(eq.count==='on'){const f=eqRate(eqS.fT),b=eqRate(eqS.bT);
     y+=22;body+=fmt(`Temperatuur: ${eq.t} °C  ·  Volume: ${Math.round(eq.V*100)} %  ·  Tijd: ${nlNum(eqS.time,1)} s`,M,y,13);
     y+=19;body+=fmt(sp.map(k=>`${eqLab(k)}: ${eqCount(k)}`).join('  ·  ')+`  ·  Reacties per seconde: heen ${nlNum(f,1)}, terug ${nlNum(b,1)}`,M,y,13);
     y+=19;body+=fmt(`Heengaande reactie: ${eqKind(dE)}  ·  teruggaande reactie: ${eqKind(-dE)}`,M,y,13);
@@ -191,10 +201,11 @@ function buildEQ(){if(!eqS)eqReset(1);lastWarn=[];
       ...(eq.flash==='on'?[[(x,y)=>eqStar(x+10,y,C.fwd),20,'reactie heen'],[(x,y)=>eqRing(x+10,y,C.bwd),20,'reactie terug']]:[])],y+4,W);
     body+=R.body;y=R.y}
   if(eq.ed==='on'){const E=eqEnergy(y+8,W);body+=E.s;y+=8+E.h}
-  if(eq.g1==='on'){const G=eqPlot(y+10,'aantal deeltjes',sp,+eq.n,W);body+=G.s;y+=10+G.h;
-    const R=eqLegend(sp.map(k=>[eqLineIcon(k),24,eqLab(k)]),y-6,W);body+=R.body;y=R.y}
-  if(eq.g2==='on'){const G=eqPlot(y+14,'reactiesnelheid (reacties per s)',['f','b'],2,W);body+=G.s;y+=14+G.h;
-    const R=eqLegend([[eqLineIcon('f'),24,'heengaande reactie'],[eqLineIcon('b'),24,'teruggaande reactie']],y-6,W);body+=R.body;y=R.y}
+  const refIcon=(x,y)=>`<line x1="${x}" y1="${y}" x2="${x+24}" y2="${y}" stroke="${refC}" stroke-width="1.3" stroke-dasharray="9 3 2 3"/>`;
+  if(eq.g1==='on'){const G=eqPlot(y+10,'aantal deeltjes',sp,+eq.n,W,EL?sp.map(k=>({v:EL[k],t0:EL.t,c:refC,d:0})):[]);body+=G.s;y+=10+G.h;
+    const R=eqLegend([...sp.map(k=>[eqLineIcon(k),24,eqLab(k)]),...(EL?[[refIcon,24,'evenwicht (gemiddelde)']]:[])],y-6,W);body+=R.body;y=R.y}
+  if(eq.g2==='on'){const G=eqPlot(y+14,'reactiesnelheid (reacties per s)',['f','b'],2,W,EL?[{v:EL.r,t0:EL.t,c:refC,d:1}]:[]);body+=G.s;y+=14+G.h;
+    const R=eqLegend([[eqLineIcon('f'),24,'heengaande reactie'],[eqLineIcon('b'),24,'teruggaande reactie'],...(EL?[[refIcon,24,'evenwicht: heen = terug']]:[])],y-6,W);body+=R.body;y=R.y}
   if(eq.caption){y+=26;body+=fmt(eq.caption,W/2,y,15,'middle')}
   return svgWrap(W,y+M,body);
 }
@@ -238,6 +249,7 @@ function eqPanel(){const sp=eqSp(),L=k=>esc(eqTxt(eqLab(k)));
     <div class="row"><span class="lab">Eén deeltje volgen</span>${seg('track',[['on','Aan'],['off','Uit']],eq.track)}</div>
     <div class="row"><span class="lab">Reacties markeren</span>${seg('flash',[['on','Aan'],['off','Uit']],eq.flash)}</div>
     <div class="row"><span class="lab">Reactievergelijking boven het vat</span>${seg('eqn',[['on','Aan'],['off','Uit']],eq.eqn)}</div>
+    <div class="row"><span class="lab">Exotherm en endotherm boven de reactievergelijking</span>${seg('exo',[['on','Aan'],['off','Uit']],eq.exo)}</div>
     <div class="row"><span class="lab">Tellers onder het vat</span>${seg('count',[['on','Aan'],['off','Uit']],eq.count)}</div>
     <div class="row"><span class="lab">Legenda</span>${seg('legend',[['on','Aan'],['off','Uit']],eq.legend)}</div>
     <div class="row"><span class="lab">Kleur</span>${seg('color',[['bw','Zwart-wit'],['color','Kleur']],eq.color)}</div>
