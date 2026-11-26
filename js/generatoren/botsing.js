@@ -68,30 +68,10 @@ function boFrame(ts){if(!boRun||route()!=='botsing'){boRAF=0;if(boRec)boRecStop(
   boRAF=requestAnimationFrame(boFrame)}
 function boPlay(){if(boRun&&!boRAF&&typeof requestAnimationFrame==='function'){boLast=0;boRAF=requestAnimationFrame(boFrame)}}
 
-/* ---------- Animatie downloaden ---------- */
-// Neemt de figuur op zoals hij in beeld beweegt (canvas → MediaRecorder) en downloadt het filmpje.
-function boRecord(sec){
-  const mime=typeof MediaRecorder==='function'&&document.createElement('canvas').captureStream
-    ?['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t=>MediaRecorder.isTypeSupported(t)):null;
-  if(!mime){toast('Opnemen lukt niet in deze browser. Probeer Chrome, Edge of Firefox.');return}
-  const svg=buildBO(),W=+svg.match(/width="(\d+)"/)[1],H=+svg.match(/height="(\d+)"/)[1];
-  const cv=document.createElement('canvas');cv.width=Math.ceil(W*1.5/2)*2;cv.height=Math.ceil(H*1.5/2)*2;   // even maten (nodig voor MP4)
-  const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);
-  const rec=new MediaRecorder(cv.captureStream(30),{mimeType:mime,videoBitsPerSecond:5e6}),chunks=[];
-  rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
-  rec.onstop=()=>{const ext=mime.includes('mp4')?'mp4':'webm',a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob(chunks,{type:mime.split(';')[0]}));a.download='botsende-deeltjes.'+ext;document.body.appendChild(a);a.click();a.remove();
-    toast(`Klaar: het filmpje (${ext.toUpperCase()}) staat in je downloads.`)};
-  boRec={cv,cx,rec,busy:false,end:performance.now()+sec*1000,shown:-1};
-  rec.start();boRun=true;boPlay();boRecFrame(svg);
-}
-function boRecFrame(svg){const R=boRec,left=Math.ceil((R.end-performance.now())/1000);
-  if(left<=0){boRecStop();return}
-  if(left!==R.shown){R.shown=left;toast(`Opname loopt … nog ${left} s`)}
-  if(R.busy)return;R.busy=true;const img=new Image();
-  img.onload=()=>{R.cx.fillStyle='#fff';R.cx.fillRect(0,0,R.cv.width,R.cv.height);R.cx.drawImage(img,0,0,R.cv.width,R.cv.height);R.busy=false};
-  img.onerror=()=>{R.busy=false};img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)}
-function boRecStop(){const R=boRec;if(!R)return;boRec=null;if(R.rec.state!=='inactive')R.rec.stop();BOTS.refresh&&BOTS.refresh()}
+/* ---------- Animatie downloaden (recStart/recFrame/recStop in core.js) ---------- */
+function boRecord(sec){boRec=recStart(buildBO(),sec,'botsende-deeltjes');if(boRec){boRun=true;boPlay()}}
+function boRecFrame(svg){if(!recFrame(boRec,svg)){boRec=null;BOTS.refresh&&BOTS.refresh()}}
+function boRecStop(){if(!boRec)return;recStop(boRec);boRec=null;BOTS.refresh&&BOTS.refresh()}
 
 /* ---------- Figuur ---------- */
 function boColors(){return bo.color==='color'

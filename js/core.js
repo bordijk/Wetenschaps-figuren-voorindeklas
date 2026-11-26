@@ -6,7 +6,7 @@ const GENS=[
  ['Aflezen',[['volume','Volume aflezen'],['onderdompeling','Onderdompelmethode'],['gasspuit','Gasspuit'],['lengte','Lengte'],['massa','Massa'],['temperatuur','Temperatuur'],['ph','pH']]],
  ['Grafieken',[['titratie','Titratiecurve'],['opwarmcurve','Opwarm-/afkoelcurve'],['energie','Energiediagram'],['halveringstijd','Halveringstijd'],['lijnspectrum','Lijnspectrum'],['massaspectrum','Massaspectrum'],['pes','Foto-elektronspectrum']]],
  ['Atoombouw en binding',[['deeltjes','Deeltjesmodel'],['metaal','Metaalrooster'],['bohr','Bohr-model'],['nuclide','Nuclidenotatie'],['lewis','Lewisstructuur'],['atoombinding','Atoombinding'],['orbitaal','Orbitaaldiagram']]],
- ['Reacties',[['reactie','Reactievergelijkingen'],['botsing','Botsende-deeltjesmodel']]],
+ ['Reacties',[['reactie','Reactievergelijkingen'],['botsing','Botsende-deeltjesmodel'],['evenwicht','Dynamisch evenwicht']]],
  ['Structuurformules',[['structuur','Structuurformule-editor']]]
 ];
 
@@ -131,4 +131,31 @@ function showPNG(){pngBlob().then(b=>{const u=URL.createObjectURL(b);const o=doc
 function copySVG(){const s=curBuild();
   navigator.clipboard.writeText(s).then(()=>toast('SVG-code gekopieerd.'),()=>{const o=document.getElementById('pngout');
     o.innerHTML=`<textarea readonly style="width:100%;height:140px;font:12px var(--f-mono)">${esc(s)}</textarea>`;o.hidden=false;o.querySelector('textarea').select();toast('Selecteer de code hieronder en kopieer.')})}
+
+/* ---------- Filmpje opnemen (voor de simulaties) ---------- */
+// recStart(svg, sec, naam) begint een opname; geef daarna bij elk beeld recFrame(R, svg) (false = tijd om, opname gestopt).
+// Beelden gaan via een canvas naar MediaRecorder; het resultaat (MP4, of WebM als MP4 niet kan) wordt gedownload.
+function recStart(svg,sec,name){
+  const mime=typeof MediaRecorder==='function'&&document.createElement('canvas').captureStream
+    ?['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t=>MediaRecorder.isTypeSupported(t)):null;
+  if(!mime){toast('Opnemen lukt niet in deze browser. Probeer Chrome, Edge of Firefox.');return null}
+  const W=+svg.match(/width="(\d+)"/)[1],H=+svg.match(/height="(\d+)"/)[1];
+  const cv=document.createElement('canvas');cv.width=Math.ceil(W*1.5/2)*2;cv.height=Math.ceil(H*1.5/2)*2;   // even maten (nodig voor MP4)
+  const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);
+  const rec=new MediaRecorder(cv.captureStream(30),{mimeType:mime,videoBitsPerSecond:5e6}),chunks=[];
+  rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+  rec.onstop=()=>{const ext=mime.includes('mp4')?'mp4':'webm',a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob(chunks,{type:mime.split(';')[0]}));a.download=name+'.'+ext;document.body.appendChild(a);a.click();a.remove();
+    toast(`Klaar: het filmpje (${ext.toUpperCase()}) staat in je downloads.`)};
+  const R={cv,cx,rec,busy:false,end:performance.now()+sec*1000,shown:-1,H};
+  rec.start();recFrame(R,svg);return R;
+}
+function recFrame(R,svg){const left=Math.ceil((R.end-performance.now())/1000);
+  if(left<=0){recStop(R);return false}
+  if(left!==R.shown){R.shown=left;toast(`Opname loopt … nog ${left} s`)}
+  if(R.busy)return true;R.busy=true;const img=new Image();
+  img.onload=()=>{R.cx.fillStyle='#fff';R.cx.fillRect(0,0,R.cv.width,R.cv.height);
+    const h=img.height||R.H;R.cx.drawImage(img,0,0,R.cv.width,R.cv.width*h/img.width||R.cv.height);R.busy=false};   // geen vervorming als de figuur hoger wordt
+  img.onerror=()=>{R.busy=false};img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);return true}
+function recStop(R){if(R&&R.rec.state!=='inactive')R.rec.stop()}
 

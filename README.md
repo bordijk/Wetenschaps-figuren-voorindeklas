@@ -19,6 +19,7 @@ Generatoren voor scheikundefiguren voor toetsen en werkbladen. Je stelt een figu
 | Reactievergelijkingen | `#reactie` | `js/generatoren/reactie.js` |
 | Structuurformule-editor | `#structuur` | `js/generatoren/structuur.js` |
 | Botsende-deeltjesmodel (simulatie) | `#botsing` | `js/generatoren/botsing.js` |
+| Dynamisch evenwicht (simulatie) | `#evenwicht` | `js/generatoren/evenwicht.js` |
 
 Elke generator heeft een eigen link: zet `#bohr` (enz.) achter het adres van de website.
 
